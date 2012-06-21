@@ -22,7 +22,7 @@ window.rec = (function () {
 			touchstart: 'TouchEvents',
 			touchmove: 'TouchEvents',
 			touchend: 'TouchEvents',
-			change: 'Events',
+//			change: 'Events',
 		},
 		excludedProps = [
 			'view',
@@ -41,7 +41,8 @@ window.rec = (function () {
 			'isTrusted',
 			'metaKey',
 			'offsetX',
-			'offsetY'
+			'offsetY',
+			'toElement',
 		],
 		elementProps = [
 			'srcElement',
@@ -58,6 +59,13 @@ window.rec = (function () {
 		currentIndex = 0,
 		interval,
 		delay = 25,
+		playbackSpeed = 1,
+		/*
+		 * I should probably only init the events when they are about
+		 * to be dispatched and then subtract window.scroll from
+		 * the MouseEvent coordinates instead of forcing things like this
+		 */
+		scrollToTop = true,
 		cover = document.body.appendChild(document.createElement('div')),
 		cursor = document.body.appendChild(document.createElement('div')),
 		controlPanel = document.body.appendChild(document.createElement('div')),
@@ -106,7 +114,7 @@ window.rec = (function () {
 			
 			'#cover.show{',
 			'	position: absolute;',
-			'	right: 0px;',
+			'	left: 0px;',
 			'	top: 0px;',
 			'	width: ' + window.screen.width + 'px;',
 			'	height: ' + window.screen.height + 'px;',
@@ -182,7 +190,8 @@ window.rec = (function () {
 	}
 
 	function pause () {	
-		window.clearInterval(interval);
+//		window.clearInterval(interval);
+		window.clearTimeout(interval);
 		playing = false;
 	}
 
@@ -194,8 +203,10 @@ window.rec = (function () {
 			playing = true;
 			cover.classList.add('show');
 			cursor.classList.add('show');
+			window.scrollTo(0, 0);
 
-			interval = window.setInterval(dispatchEvent, delay);
+			interval = window.setTimeout(dispatchEvent,
+				events[currentIndex].recTime * playbackSpeed);
 		}
 	}
 
@@ -203,7 +214,11 @@ window.rec = (function () {
 		var event = events[currentIndex],
 			target = event.target;
 		
-		if (!target) target = event.recTarget;
+		if (scrollToTop) {
+			window.scrollTo(0, 0);
+		}
+		
+		if (!target) target = event.recTarget || document;
 		
 		if (typeof event.pageX === 'number' && typeof event.pageY === 'number') {
 			cursor.style.left = (event.pageX - cursor.offsetWidth / 2) + 'px';
@@ -214,6 +229,9 @@ window.rec = (function () {
 		currentIndex++;
 		if ( currentIndex >= events.length ) {
 			stop();
+		} else {
+			interval = window.setTimeout(dispatchEvent,
+				event.recTime * playbackSpeed);
 		}
 	}
 
@@ -240,7 +258,7 @@ window.rec = (function () {
 		for (prop in event) {
 			if (event.hasOwnProperty(prop) && excludedProps.indexOf(prop) === -1) {
 				if (elementProps.indexOf(prop) !== -1) {
-					if (event[prop]) {
+					if (event[prop] && event[prop].id !== '') {
 						this[prop] = '#' + event[prop].id;
 					} else {
 						this[prop] = null;
@@ -321,6 +339,10 @@ window.rec = (function () {
 		return events;
 	}		
 
+	if (!window.navigator || window.navigator.userAgent !== 'Netscape') {
+		eventTypes.change = 'Events';
+	}
+
 	rec.stop = stop;
 	rec.play = play;
 	rec.start = start;
@@ -339,7 +361,15 @@ window.rec = (function () {
 	};
 
 	rec.delay = function (ms) {
-		return (delay = ms || delay);
+		return (ms != null)?
+			delay = ms:
+			delay;
+	};
+
+	rec.playbackSpeed = function (scale) {
+		return (scale != null)?
+			playbackSpeed = scale:
+			playbackSpeed;
 	};
 
 	rec.isPlaying = function () {
@@ -352,4 +382,3 @@ window.rec = (function () {
 	
 	return rec;
 }());
-
