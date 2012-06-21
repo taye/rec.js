@@ -11,20 +11,37 @@ window.rec = (function () {
 		document = window.document,
 		events = [],
 		eventObjects = [],
-		eventTypes = [
-//			'click',
-			'mousedown',
-			'mousemove',
-			'mouseout',
-			'mouseenter',
-			'mouseup',
-			'touchstart',
-			'touchmove',
-			'touchend',
-			'change'
-		],
+		eventTypes = {
+//			'click,
+
+			mousedown: 'MouseEvents',
+			mousemove: 'MouseEvents',
+			mouseout: 'MouseEvents',
+			mouseenter: 'MouseEvents',
+			mouseup: 'MouseEvents',
+			touchstart: 'TouchEvents',
+			touchmove: 'TouchEvents',
+			touchend: 'TouchEvents',
+			change: 'Events',
+		},
 		excludedProps = [
-			'view'
+			'view',
+			'recTarget',
+			'recTime',
+			'altKey',
+			'shiftKey',
+			'metaKey',
+			'ctrlKey',
+			'bubbles',
+			'cancelable',
+			'detail',
+			'cancelBubble',
+			'defaultPrevented',
+			'eventPhase',
+			'isTrusted',
+			'metaKey',
+			'offsetX',
+			'offsetY'
 		],
 		elementProps = [
 			'srcElement',
@@ -32,8 +49,9 @@ window.rec = (function () {
 			'currentTarget',
 			'fromElement',
 			'toElement',
-			'relatedTarget',
+			'relatedTarget'
 		],
+		prevEventTime = 0,
 		json = '',
 		recording = false,
 		playing = false,
@@ -53,7 +71,7 @@ window.rec = (function () {
 			'	right: 20px;',
 			'	top: 20px;',
 			'	width: 100px;',
-			'	z-index: 9001;',
+			'	z-index: 9002;',
 			'}',
 			
 			'#controlPanel button {',
@@ -71,14 +89,28 @@ window.rec = (function () {
 			'	border: solid 2px #444444;',
 			'	border-radius: 5px;',
 			'}',
+
+			'#cursor {',
+			'	z-index: 9003;',
+			'	display: none;',
+			'}',
 			
-			'#cover.active{',
+			'#cursor.show{',
+			'	display: block;',
+			'}',
+			
+			'#cover {',
+			'	z-index: 9001;',
+			'	display: none;',
+			'}',
+			
+			'#cover.show{',
 			'	position: absolute;',
 			'	right: 0px;',
 			'	top: 0px;',
-			'	width: 4000px;',
-			'	height: 4000px;',
-			'	z-index: 9000;',
+			'	width: ' + window.screen.width + 'px;',
+			'	height: ' + window.screen.height + 'px;',
+			'	display: block;',
 			'}'
 		].join('\n'),
 		style = document.createElement('style');
@@ -88,6 +120,8 @@ window.rec = (function () {
 	document.body.appendChild(style);
 	
 	cursor.id = 'cursor';
+	
+	cover.id = 'cover';
 	
 	controlPanel.id = 'controlPanel';
 	
@@ -111,30 +145,40 @@ window.rec = (function () {
 		if (!recording) {
 			stop();
 			recording = true;
+			prevEventTime = new Date().getTime();
 			events = [];
 
-			for (var i = 0; i < eventTypes.length; i++) {
-				document.addEventListener(eventTypes[i], recordEvent);
+			for (var eventType in eventTypes) {
+				if (eventTypes.hasOwnProperty(eventType)) {
+					document.addEventListener(eventType, recordEvent);
+				}
 			}
 		}
 	}
 	
 	function recordEvent (event) {
 		if (event.target.parent !== controlPanel && event.currentTarget.parent !== controlPanel) {
+			event.recTime = event.timeStamp - prevEventTime;
 			events.push(event);
 		}
+		prevEventTime = event.timeStamp;
 	}
 	
 	function stop () {
-		for (var i = 0; i < eventTypes.length; i++) {
-			document.removeEventListener(eventTypes[i], recordEvent);
+		for (var eventType in eventTypes) {
+			if (eventTypes.hasOwnProperty(eventType)) {
+//		for (var i = 0; i < eventTypes.length; i++) {
+				document.removeEventListener(eventType, recordEvent);
+			}
 		}
 
 		currentIndex = 0;
+		prevEventTime = 0;
 		window.clearInterval(interval);
 		playing = false;
 		recording = false;
-		cover.classList.remove('active');
+		cover.classList.remove('show');
+		cursor.classList.remove('show');
 	}
 
 	function pause () {	
@@ -148,24 +192,41 @@ window.rec = (function () {
 				stop();
 			}
 			playing = true;
-			cover.classList.add('active');
+			cover.classList.add('show');
+			cursor.classList.add('show');
 
 			interval = window.setInterval(dispatchEvent, delay);
 		}
 	}
 
 	function dispatchEvent () {
-		var event = events[currentIndex];
+		var event = events[currentIndex],
+			target = event.target;
+		
+		if (!target) target = event.recTarget;
 		
 		if (typeof event.pageX === 'number' && typeof event.pageY === 'number') {
 			cursor.style.left = (event.pageX - cursor.offsetWidth / 2) + 'px';
 			cursor.style.top = (event.pageY - cursor.offsetHeight / 2) + 'px';
 		}
-		event.target.dispatchEvent(event);
+		target.dispatchEvent(event);
 		
 		currentIndex++;
 		if ( currentIndex >= events.length ) {
 			stop();
+		}
+	}
+
+	function cancelEvent (event) {
+		event.preventDefault();
+		event.stopPropagation();
+		
+		return false;
+	}
+	
+	for (var eventType in eventTypes) {
+		if (eventTypes.hasOwnProperty(eventType)) {
+			cover.addEventListener(eventType, cancelEvent);
 		}
 	}
 
@@ -179,60 +240,95 @@ window.rec = (function () {
 		for (prop in event) {
 			if (event.hasOwnProperty(prop) && excludedProps.indexOf(prop) === -1) {
 				if (elementProps.indexOf(prop) !== -1) {
-					this[prop] = (event[prop])?
-						event[prop].id:
-						null;
+					if (event[prop]) {
+						this[prop] = '#' + event[prop].id;
+					} else {
+						this[prop] = null;
+					}
 				} else {
 					this[prop] = event[prop];
 				}
 			}
 		}
+		return this;
 	}
 	
-	function convertEvents(eventArray) {
+	function createEvent (eventObject) {
+		var event;
+		
+		if (eventTypes[eventObject.type] === 'MouseEvents') {
+			event = document.createEvent('MouseEvents');
+			// Might need to change window thing...
+/*			event.initMouseEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable, window, 
+				eventObject.detail, eventObject.screenX, eventObject.screenY, eventObject.clientX, eventObject.clientY, 
+				eventObject.ctrlKey, eventObject.altKey, eventObject.shiftKey, eventObject.metaKey, 
+				eventObject.button, document.querySelector(eventObject.relatedTarget));
+*/
+			event.initMouseEvent(eventObject.type, true, false, window, 
+				0, eventObject.screenX, eventObject.screenY, eventObject.clientX, eventObject.clientY, 
+				false, false, false, false, 
+				eventObject.button, document.querySelector(eventObject.relatedTarget));
+		} else {
+			event = document.createEvent('Events');
+			event.initEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable)
+		}
+		event.recTarget = document.querySelector(eventObject.target);
+		
+		return event;
+	}
+	
+	function convertEvents() {
 		var i,
 		objects = [];
 		
-		if (typeof eventArray !== 'object') {
+		if (typeof events !== 'object') {
 			return objects;
 		}
 		
 		for (i = 0; i < events.length; i++) {
-			objects[i] = new Event(eventArray[i]);
+			objects[i] = new Event(events[i]);
 		}
 		return objects;
 	}
-	function createEvent(eventObject) {
-		
-	}
 	
 	function eventsToJson () {
-		eventObjects = convertEvents(events);
+		eventObjects = convertEvents();
 		json = '[ ';
 		
 		for (var i = 0; i < eventObjects.length; i++) {
 			json += JSON.stringify(eventObjects[i]);
 			
 			if ( i < eventObjects.length - 1) {
-				json += ', ';
+				json += ',\n';
 			}
 		}
 		
 		json += ' ]';
 		return json;
 	}
+	
+	function jsonToEvents(string) {
+		var parsedObject;
+		
+		string = string || json || eventsToJson();
+		parsedObject = JSON.parse(string);
+		eventObjects = [];
+		
+		for (var i = 0; i < parsedObject.length; i++) {
+			eventObjects[i] = parsedObject[i];
+			events[i] = createEvent(eventObjects[i]);
+		}
+		return events;
+	}		
 
-	function clear (event) {
-		events = [];
-		stop();
-	}
-
-	rec.clear = clear;
 	rec.stop = stop;
 	rec.play = play;
 	rec.start = start;
+	rec.Event = Event;
 	rec.eventsToJson = eventsToJson;
+	rec.jsonToEvents = jsonToEvents;
 	rec.convertEvents = convertEvents;
+	rec.createEvent = createEvent;
 
 	rec.events = function () {
 		return events;
