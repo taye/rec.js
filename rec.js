@@ -12,8 +12,7 @@ window.rec = (function () {
 		events = [],
 		eventObjects = [],
 		eventTypes = {
-//			'click,
-
+			click: 'MouseEvents',
 			mousedown: 'MouseEvents',
 			mousemove: 'MouseEvents',
 			mouseout: 'MouseEvents',
@@ -22,7 +21,7 @@ window.rec = (function () {
 			touchstart: 'TouchEvents',
 			touchmove: 'TouchEvents',
 			touchend: 'TouchEvents',
-//			change: 'Events',
+			change: 'Events'
 		},
 		excludedProps = [
 			'view',
@@ -42,7 +41,7 @@ window.rec = (function () {
 			'metaKey',
 			'offsetX',
 			'offsetY',
-			'toElement',
+			'toElement'
 		],
 		elementProps = [
 			'srcElement',
@@ -165,7 +164,7 @@ window.rec = (function () {
 	}
 	
 	function recordEvent (event) {
-		if (event.target.parent !== controlPanel && event.currentTarget.parent !== controlPanel) {
+		if (event.target.parentNode !== controlPanel && event.currentTarget.parent !== controlPanel) {
 			event.recTime = event.timeStamp - prevEventTime;
 			events.push(event);
 		}
@@ -190,7 +189,6 @@ window.rec = (function () {
 	}
 
 	function pause () {	
-//		window.clearInterval(interval);
 		window.clearTimeout(interval);
 		playing = false;
 	}
@@ -218,7 +216,13 @@ window.rec = (function () {
 			window.scrollTo(0, 0);
 		}
 		
-		if (!target) target = event.recTarget || document;
+		if (!target) {
+			/*
+			 * I should perhaps temporarily hide the Cover then 
+			 * target = document.ElementFromPoint(pageX, pageY)
+			 */
+			target = event.recTarget || document;
+		}
 		
 		if (typeof event.pageX === 'number' && typeof event.pageY === 'number') {
 			cursor.style.left = (event.pageX - cursor.offsetWidth / 2) + 'px';
@@ -288,7 +292,7 @@ window.rec = (function () {
 				eventObject.button, document.querySelector(eventObject.relatedTarget));
 		} else {
 			event = document.createEvent('Events');
-			event.initEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable)
+			event.initEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable);
 		}
 		event.recTarget = document.querySelector(eventObject.target);
 		
@@ -324,7 +328,7 @@ window.rec = (function () {
 		json += ' ]';
 		return json;
 	}
-	
+
 	function jsonToEvents(string) {
 		var parsedObject;
 		
@@ -361,15 +365,22 @@ window.rec = (function () {
 	};
 
 	rec.delay = function (ms) {
-		return (ms != null)?
-			delay = ms:
-			delay;
+		if (ms === undefined) {
+			ms = delay;
+		} else {
+			ms = Number(ms);
+			delay = ms;
+		}
+		return ms;
 	};
 
 	rec.playbackSpeed = function (scale) {
-		return (scale != null)?
-			playbackSpeed = scale:
-			playbackSpeed;
+		if (scale === undefined) {
+			scale = delay;
+		} else {
+			scale = Number(scale); delay = scale;
+		}
+		return scale;
 	};
 
 	rec.isPlaying = function () {
@@ -379,6 +390,6 @@ window.rec = (function () {
 	rec.isRecording = function () {
 		return recording;
 	};
-	
+
 	return rec;
 }());
