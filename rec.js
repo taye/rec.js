@@ -10,7 +10,7 @@ window.rec = (function () {
 	var rec = {},
 		document = window.document,
 		events = [],
-		eventObjects = {},
+		eventObjects = [],
 		eventTypes = [
 //			'click',
 			'mousedown',
@@ -23,12 +23,25 @@ window.rec = (function () {
 			'touchend',
 			'change'
 		],
+		excludedProps = [
+			'view'
+		],
+		elementProps = [
+			'srcElement',
+			'target',
+			'currentTarget',
+			'fromElement',
+			'toElement',
+			'relatedTarget',
+		],
 		json = '',
 		recording = false,
 		playing = false,
 		currentIndex = 0,
 		interval,
 		delay = 25,
+		cover = document.body.appendChild(document.createElement('div')),
+		cursor = document.body.appendChild(document.createElement('div')),
 		controlPanel = document.body.appendChild(document.createElement('div')),
 		recordButton = controlPanel.appendChild(document.createElement('button')),
 		stopButton = controlPanel.appendChild(document.createElement('button')),
@@ -40,6 +53,7 @@ window.rec = (function () {
 			'	right: 20px;',
 			'	top: 20px;',
 			'	width: 100px;',
+			'	z-index: 9001;',
 			'}',
 			
 			'#controlPanel button {',
@@ -47,6 +61,24 @@ window.rec = (function () {
 			'	height: 30px;',
 			'	border-radius: 5px;',
 			'	float: left;',
+			'}',
+			
+			'#cursor {',
+			'	width: 5px;',
+			'	height: 5px;',
+			'	position: absolute;',
+			'	background-color: #ffffff;',
+			'	border: solid 2px #444444;',
+			'	border-radius: 5px;',
+			'}',
+			
+			'#cover.active{',
+			'	position: absolute;',
+			'	right: 0px;',
+			'	top: 0px;',
+			'	width: 4000px;',
+			'	height: 4000px;',
+			'	z-index: 9000;',
 			'}'
 		].join('\n'),
 		style = document.createElement('style');
@@ -54,6 +86,8 @@ window.rec = (function () {
 	style.type = 'text/css';
 	style.innerHTML = css;
 	document.body.appendChild(style);
+	
+	cursor.id = 'cursor';
 	
 	controlPanel.id = 'controlPanel';
 	
@@ -75,6 +109,7 @@ window.rec = (function () {
 
 	function start () {
 		if (!recording) {
+			stop();
 			recording = true;
 			events = [];
 
@@ -99,6 +134,7 @@ window.rec = (function () {
 		window.clearInterval(interval);
 		playing = false;
 		recording = false;
+		cover.classList.remove('active');
 	}
 
 	function pause () {	
@@ -108,15 +144,24 @@ window.rec = (function () {
 
 	function play () {
 		if (events.length) {
-			stop();
+			if (playing || recording) {
+				stop();
+			}
 			playing = true;
+			cover.classList.add('active');
 
 			interval = window.setInterval(dispatchEvent, delay);
 		}
 	}
 
 	function dispatchEvent () {
-		events[currentIndex].target.dispatchEvent(events[currentIndex]);
+		var event = events[currentIndex];
+		
+		if (typeof event.pageX === 'number' && typeof event.pageY === 'number') {
+			cursor.style.left = (event.pageX - cursor.offsetWidth / 2) + 'px';
+			cursor.style.top = (event.pageY - cursor.offsetHeight / 2) + 'px';
+		}
+		event.target.dispatchEvent(event);
 		
 		currentIndex++;
 		if ( currentIndex >= events.length ) {
@@ -127,20 +172,54 @@ window.rec = (function () {
 	function Event (event) {
 		var prop;
 		
+		if (!event || typeof event !== 'object') {
+			return null;
+		}
+		
 		for (prop in event) {
-			if (event.hasOwnProperty(prop)) {
-				this[prop] = event[prop];
+			if (event.hasOwnProperty(prop) && excludedProps.indexOf(prop) === -1) {
+				if (elementProps.indexOf(prop) !== -1) {
+					this[prop] = (event[prop])?
+						event[prop].id:
+						null;
+				} else {
+					this[prop] = event[prop];
+				}
 			}
 		}
 	}
 	
-	function eventsToJson () {
-		var i;
+	function convertEvents(eventArray) {
+		var i,
+		objects = [];
+		
+		if (typeof eventArray !== 'object') {
+			return objects;
+		}
 		
 		for (i = 0; i < events.length; i++) {
-			eventObjects.push(new Event(events[i]));
+			objects[i] = new Event(eventArray[i]);
 		}
-		return JSON.stringify(eventObjects);
+		return objects;
+	}
+	function createEvent(eventObject) {
+		
+	}
+	
+	function eventsToJson () {
+		eventObjects = convertEvents(events);
+		json = '[ ';
+		
+		for (var i = 0; i < eventObjects.length; i++) {
+			json += JSON.stringify(eventObjects[i]);
+			
+			if ( i < eventObjects.length - 1) {
+				json += ', ';
+			}
+		}
+		
+		json += ' ]';
+		return json;
 	}
 
 	function clear (event) {
@@ -153,11 +232,16 @@ window.rec = (function () {
 	rec.play = play;
 	rec.start = start;
 	rec.eventsToJson = eventsToJson;
+	rec.convertEvents = convertEvents;
 
 	rec.events = function () {
 		return events;
 	};
-	
+
+	rec.eventObjects = function () {
+		return eventObjects;
+	};
+
 	rec.delay = function (ms) {
 		return (delay = ms || delay);
 	};
