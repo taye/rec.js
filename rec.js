@@ -13,6 +13,7 @@ window.rec = (function () {
 		eventObjects = [],
 		eventTypes = {
 			click: 'MouseEvents',
+			dbclick: 'MouseEvents',
 			mousedown: 'MouseEvents',
 			mousemove: 'MouseEvents',
 			mouseover: 'MouseEvents',
@@ -20,7 +21,6 @@ window.rec = (function () {
 			mouseleave: 'MouseEvents',
 			mouseenter: 'MouseEvents',
 			mouseup: 'MouseEvents',
-			
 			
 			touchstart: 'TouchEvents',
 			touchmove: 'TouchEvents',
@@ -34,7 +34,49 @@ window.rec = (function () {
 			focus: 'Events',
 			focusin: 'Events',
 			focusout: 'Events',
-			blur: 'Events'
+			select: 'Events'
+		},
+		logEvent = {
+			Events: function (e) {
+				console.log('=== ' + e.type + 'event ===');
+				console.log('target: ' + e.target);
+				if (e.relatedTarget) {
+					console.log('relatedTarget: ' + e.relatedTarget);
+				}
+			},
+			MouseEvents: function (e) {
+				logEvent.MouseEvents(e);
+				console.log('pageX, pageY: ' + e.pageY, e.pageY);
+				console.log('screenX, screenY: ' + e.screenY, e.screenY);
+			},
+			TouchEvents: function (e) {
+				logEvent.MouseEvents(e);
+				console.Log('# touches: ' + e.touches.length);
+			},
+			KeyboardEvents: function (e) {
+				logEvent.MouseEvents(e);
+				console.log(e.keycode || e.which);
+			}
+		},
+		mimicEvent = {
+			change: {
+				capture: function (e) {
+					e.value = e.target.value;
+				},
+				dispatch: function (e) {
+					e.target.value = e.value;
+				}
+			},
+			blur: {
+				dispatch: function (e) {
+					e.target.blur();
+				}
+			},
+			focus: {
+				dispatch: function (e) {
+					e.target.focus();
+				}
+			}
 		},
 		excludedProps = [
 			'view',
@@ -81,20 +123,20 @@ window.rec = (function () {
 		 * captured while the window was scrolled
 		 */
 		scrollToTop = true,
+		recPanel = document.body.appendChild(document.createElement('div')),
 		cover = document.body.appendChild(document.createElement('div')),
 		cursor = document.body.appendChild(document.createElement('div')),
-		recPanel = document.body.appendChild(document.createElement('div')),
 		recordButton = recPanel.appendChild(document.createElement('button')),
 		stopButton = recPanel.appendChild(document.createElement('button')),
 		playButton = recPanel.appendChild(document.createElement('button')),
 		pauseButton = recPanel.appendChild(document.createElement('button')),
 		css = [
 			'#recPanel {',
-			'	position: absolute;',
+			'	position: fixed;',
 			'	right: 20px;',
 			'	top: 20px;',
 			'	width: 100px;',
-			'	z-index: 9002;',
+			'	z-index: 90002;',
 			'}',
 			
 			'#recPanel button {',
@@ -106,11 +148,15 @@ window.rec = (function () {
 			'	border-radius: 5px !important;',
 			'	float: left !important;',
 			'}',
-			
+
+			'#recPanel button:active {',
+			'	background-color: #99999 !important;',
+			'}',
+
 			'#cursor {',
 			'	width: 5px;',
 			'	height: 5px;',
-			'	position: absolute;',
+			'	position: absolute !important;',
 			'	background-color: #ffffff;',
 			'	border: solid 2px #444444;',
 			'	border-radius: 5px;',
@@ -137,6 +183,7 @@ window.rec = (function () {
 			'	width: ' + window.screen.width + 'px !important;',
 			'	height: ' + window.screen.height + 'px !important;',
 			'	display: block;',
+			'	opacity:0 !important;',
 			'}'
 		].join('\n'),
 		style = document.createElement('style');
@@ -183,13 +230,16 @@ window.rec = (function () {
 	}
 	
 	function recordEvent (event) {
-		if (event.target.parentNode !== recPanel && event.currentTarget.parent !== recPanel) {
+		if (event.target.parentNode !== recPanel && event.currentTarget.parent !== recPanel) {			
+			if (event.type in mimicEvent && typeof mimicEvent[event.type].capture === 'function') {
+				mimicEvent[event.type].capture(event);
+			}
 			event.recTime = event.timeStamp - prevEventTime;
 			events.push(event);
 		}
 		prevEventTime = event.timeStamp;
 	}
-	
+
 	function stop () {
 		for (var eventType in eventTypes) {
 			if (eventTypes.hasOwnProperty(eventType)) {
@@ -242,8 +292,12 @@ window.rec = (function () {
 			 */
 			target = event.recTarget || document;
 		}
-		
-		if (typeof event.pageX === 'number' && typeof event.pageY === 'number') {
+
+		if (event.type in mimicEvent && typeof mimicEvent[event.type].dispatch === 'function') {
+			mimicEvent[event.type].dispatch(event);
+		}
+
+		if (eventTypes[event.type] === 'MouseEvents') {
 			cursor.style.left = (event.pageX - cursor.offsetWidth / 2) + 'px';
 			cursor.style.top = (event.pageY - cursor.offsetHeight / 2) + 'px';
 		}
@@ -311,7 +365,7 @@ window.rec = (function () {
 				eventObject.button, document.querySelector(eventObject.relatedTarget));
 */
 			event.initMouseEvent(eventObject.type, true, false, window, 
-				0, eventObject.screenX, eventObject.screenY, eventObject.clientX, eventObject.clientY, 
+				0, eventObject.screenX, eventObject.screenY, eventObject.clientX, eventObject.clientY,
 				false, false, false, false, 
 				eventObject.button, document.querySelector(eventObject.relatedTarget));
 		} else {
