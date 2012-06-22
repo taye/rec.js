@@ -15,13 +15,26 @@ window.rec = (function () {
 			click: 'MouseEvents',
 			mousedown: 'MouseEvents',
 			mousemove: 'MouseEvents',
+			mouseover: 'MouseEvents',
 			mouseout: 'MouseEvents',
+			mouseleave: 'MouseEvents',
 			mouseenter: 'MouseEvents',
 			mouseup: 'MouseEvents',
+			
+			
 			touchstart: 'TouchEvents',
 			touchmove: 'TouchEvents',
 			touchend: 'TouchEvents',
-			change: 'Events'
+			
+			keydown: 'KeyboardEvents',
+			keyup: 'KeyboardEvents',
+			keypress: 'KeyboardEvents',
+			
+			change: 'Events',
+			focus: 'Events',
+			focusin: 'Events',
+			focusout: 'Events',
+			blur: 'Events'
 		},
 		excludedProps = [
 			'view',
@@ -62,18 +75,21 @@ window.rec = (function () {
 		/*
 		 * I should probably only init the events when they are about
 		 * to be dispatched and then subtract window.scroll from
-		 * the MouseEvent coordinates instead of forcing things like this
+		 * the MouseEvent coordinates instead of force scrolling (0, 0)
+		 * 
+		 * There is also a problem with mouseEvents whent they were
+		 * captured while the window was scrolled
 		 */
 		scrollToTop = true,
 		cover = document.body.appendChild(document.createElement('div')),
 		cursor = document.body.appendChild(document.createElement('div')),
-		controlPanel = document.body.appendChild(document.createElement('div')),
-		recordButton = controlPanel.appendChild(document.createElement('button')),
-		stopButton = controlPanel.appendChild(document.createElement('button')),
-		playButton = controlPanel.appendChild(document.createElement('button')),
-		pauseButton = controlPanel.appendChild(document.createElement('button')),
+		recPanel = document.body.appendChild(document.createElement('div')),
+		recordButton = recPanel.appendChild(document.createElement('button')),
+		stopButton = recPanel.appendChild(document.createElement('button')),
+		playButton = recPanel.appendChild(document.createElement('button')),
+		pauseButton = recPanel.appendChild(document.createElement('button')),
 		css = [
-			'#controlPanel {',
+			'#recPanel {',
 			'	position: absolute;',
 			'	right: 20px;',
 			'	top: 20px;',
@@ -81,11 +97,14 @@ window.rec = (function () {
 			'	z-index: 9002;',
 			'}',
 			
-			'#controlPanel button {',
-			'	width: 100%;',
-			'	height: 30px;',
-			'	border-radius: 5px;',
-			'	float: left;',
+			'#recPanel button {',
+			'	width: 100% !important;',
+			'	height: 30px; !important',
+			'	margin: 5px, 0px, 5px, 0px !important;',
+			'	background-color: #dddddd !important;',
+			'	border: solid 2px #333333 !important;',
+			'	border-radius: 5px !important;',
+			'	float: left !important;',
 			'}',
 			
 			'#cursor {',
@@ -112,11 +131,11 @@ window.rec = (function () {
 			'}',
 			
 			'#cover.show{',
-			'	position: absolute;',
-			'	left: 0px;',
-			'	top: 0px;',
-			'	width: ' + window.screen.width + 'px;',
-			'	height: ' + window.screen.height + 'px;',
+			'	position: fixed; !important;',
+			'	left: 0px !important;',
+			'	top: 0px !important;',
+			'	width: ' + window.screen.width + 'px !important;',
+			'	height: ' + window.screen.height + 'px !important;',
 			'	display: block;',
 			'}'
 		].join('\n'),
@@ -130,7 +149,7 @@ window.rec = (function () {
 	
 	cover.id = 'cover';
 	
-	controlPanel.id = 'controlPanel';
+	recPanel.id = 'recPanel';
 	
 	playButton.id = 'play';
 	playButton.innerHTML = 'Play';
@@ -164,7 +183,7 @@ window.rec = (function () {
 	}
 	
 	function recordEvent (event) {
-		if (event.target.parentNode !== controlPanel && event.currentTarget.parent !== controlPanel) {
+		if (event.target.parentNode !== recPanel && event.currentTarget.parent !== recPanel) {
 			event.recTime = event.timeStamp - prevEventTime;
 			events.push(event);
 		}
@@ -265,7 +284,12 @@ window.rec = (function () {
 					if (event[prop] && event[prop].id !== '') {
 						this[prop] = '#' + event[prop].id;
 					} else {
-						this[prop] = null;
+						if (event[prop] === document.body) {
+							this[prop] = 'body';
+						}
+						else {
+							this[prop] = null;
+						}
 					}
 				} else {
 					this[prop] = event[prop];
