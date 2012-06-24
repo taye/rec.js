@@ -36,7 +36,7 @@ window.rec = (function () {
 			focusout: 'Events',
 			select: 'Events'
 		},
-		logEvent = {
+		logEvent = {		
 			Events: function (e) {
 				console.log('=== ' + e.type + 'event ===');
 				console.log('target: ' + e.target);
@@ -45,19 +45,23 @@ window.rec = (function () {
 				}
 			},
 			MouseEvents: function (e) {
-				logEvent.MouseEvents(e);
+				logEvent.Events(e);
 				console.log('pageX, pageY: ' + e.pageY, e.pageY);
 				console.log('screenX, screenY: ' + e.screenY, e.screenY);
 			},
 			TouchEvents: function (e) {
-				logEvent.MouseEvents(e);
+				logEvent.Events(e);
 				console.Log('# touches: ' + e.touches.length);
 			},
 			KeyboardEvents: function (e) {
-				logEvent.MouseEvents(e);
+				logEvent.Events(e);
 				console.log(e.keycode || e.which);
 			}
 		},
+		eventsToLog = [
+			'KeyboardEvents',
+			'change'
+		],
 		mimicEvent = {
 			change: {
 				capture: function (e) {
@@ -76,7 +80,17 @@ window.rec = (function () {
 				dispatch: function (e) {
 					e.target.focus();
 				}
-			}
+			},
+            mousedown: {
+                dispatch: function (e) {
+                    cursor.classList.add('down');
+                }
+            },
+            mouseup: {
+                dispatch: function (e) {
+                    cursor.classList.remove('down');
+                }
+            }
 		},
 		excludedProps = [
 			'view',
@@ -171,6 +185,10 @@ window.rec = (function () {
 			'	display: block;',
 			'}',
 			
+			'#cursor.down{',
+			'	background-color: #000000 !important;',
+			'}',
+			
 			'#cover {',
 			'	z-index: 9001;',
 			'	display: none;',
@@ -187,7 +205,7 @@ window.rec = (function () {
 			'}'
 		].join('\n'),
 		style = document.createElement('style');
-	
+
 	style.type = 'text/css';
 	style.innerHTML = css;
 	document.body.appendChild(style);
@@ -295,6 +313,10 @@ window.rec = (function () {
 
 		if (event.type in mimicEvent && typeof mimicEvent[event.type].dispatch === 'function') {
 			mimicEvent[event.type].dispatch(event);
+		}
+		if (eventsToLog.indexOf(event.type) !== -1 || eventsToLog.indexOf(eventTypes[event.type]) !== -1) {
+			// Need to simplify this
+			logEvent[eventTypes[event.type]](event);
 		}
 
 		if (eventTypes[event.type] === 'MouseEvents') {
@@ -424,6 +446,16 @@ window.rec = (function () {
 	if (!window.navigator || window.navigator.userAgent !== 'Netscape') {
 		eventTypes.change = 'Events';
 	}
+
+    rec = function (options) {
+        if (typeof options !== 'object') {
+            return;
+        }
+
+        eventsToLog = (options.eventsToLog)?
+            options.eventsToLog:
+            eventstoLog;
+    }
 
 	rec.stop = stop;
 	rec.play = play;
