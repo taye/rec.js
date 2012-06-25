@@ -1,7 +1,10 @@
 /*
  * rec.js
  * Event recording and playback module
- * Copyright Taye Adeyemi
+ *
+ * Copyright (c) 2012 Taye Adeyemi
+ * Open source under the MIT License.
+ * https://raw.github.com/TAdeyemi/rec.js/master/LICENSE
  */
 
 window.rec = (function () {
