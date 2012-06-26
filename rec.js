@@ -148,15 +148,15 @@ window.rec = (function () {
 		playButton = recPanel.appendChild(document.createElement('button')),
 		pauseButton = recPanel.appendChild(document.createElement('button')),
 		css = [
-			'#recPanel {',
+			'#rec-panel {',
 			'	position: fixed;',
 			'	right: 20px;',
 			'	top: 20px;',
 			'	width: 100px;',
-			'	z-index: 90002;',
+			'	z-index: 9002;',
 			'}',
 			
-			'#recPanel button {',
+			'#rec-panel button {',
 			'	width: 100% !important;',
 			'	height: 30px; !important',
 			'	margin: 5px, 0px, 5px, 0px !important;',
@@ -166,11 +166,11 @@ window.rec = (function () {
 			'	float: left !important;',
 			'}',
 
-			'#recPanel button:active {',
+			'#rec-panel button:active {',
 			'	background-color: #99999 !important;',
 			'}',
 
-			'#cursor {',
+			'#rec-cursor {',
 			'	width: 5px;',
 			'	height: 5px;',
 			'	position: absolute !important;',
@@ -179,25 +179,25 @@ window.rec = (function () {
 			'	border-radius: 5px;',
 			'}',
 
-			'#cursor {',
+			'#rec-cursor {',
 			'	z-index: 9003;',
 			'	display: none;',
 			'}',
 			
-			'#cursor.show{',
+			'#rec-cursor.show{',
 			'	display: block;',
 			'}',
 			
-			'#cursor.down{',
+			'#rec-cursor.down{',
 			'	background-color: #000000 !important;',
 			'}',
 			
-			'#cover {',
+			'#rec-cover {',
 			'	z-index: 9001;',
 			'	display: none;',
 			'}',
 			
-			'#cover.show{',
+			'#rec-cover.show{',
 			'	position: fixed; !important;',
 			'	left: 0px !important;',
 			'	top: 0px !important;',
@@ -213,11 +213,11 @@ window.rec = (function () {
 	style.innerHTML = css;
 	document.body.appendChild(style);
 	
-	cursor.id = 'cursor';
+	cursor.id = 'rec-cursor';
 	
-	cover.id = 'cover';
+	cover.id = 'rec-cover';
 	
-	recPanel.id = 'recPanel';
+	recPanel.id = 'rec-panel';
 	
 	playButton.id = 'play';
 	playButton.innerHTML = 'Play';
@@ -251,7 +251,7 @@ window.rec = (function () {
 	}
 	
 	function recordEvent (event) {
-		if (event.target.parentNode !== recPanel && event.currentTarget.parent !== recPanel) {			
+		if ((event.target.parentNode !== recPanel && event.currentTarget.parent !== recPanel) || event.type == 'mousemove') {			
 			if (event.type in mimicEvent && typeof mimicEvent[event.type].capture === 'function') {
 				mimicEvent[event.type].capture(event);
 			}
@@ -393,8 +393,12 @@ window.rec = (function () {
 				0, eventObject.screenX, eventObject.screenY, eventObject.clientX, eventObject.clientY,
 				false, false, false, false, 
 				eventObject.button, document.querySelector(eventObject.relatedTarget));
+		} else if (eventTypes[eventObject.type] === 'MouseEvents') {
+		    event.initKeyboardEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable, window,
+    		    eventObject.charArg, eventObject.keyArg, eventObject.locationArg, eventObject.modifiersList,
+	    	    eventObject.repeat, eventObject.localeArg);
 		} else {
-			event = document.createEvent('Events');
+			event = document.createEvent(eventTypes[eventObject.type]);
 			event.initEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable);
 		}
 		event.recTarget = document.querySelector(eventObject.target);
