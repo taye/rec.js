@@ -393,7 +393,7 @@ window.rec = (function () {
 				0, eventObject.screenX, eventObject.screenY, eventObject.clientX, eventObject.clientY,
 				false, false, false, false, 
 				eventObject.button, document.querySelector(eventObject.relatedTarget));
-		} else if (eventTypes[eventObject.type] === 'MouseEvents') {
+		} else if (eventTypes[eventObject.type] === 'KeyboardEvents') {
 		    event.initKeyboardEvent(eventObject.type, eventObject.canBubble, eventObject.cancelable, window,
     		    eventObject.charArg, eventObject.keyArg, eventObject.locationArg, eventObject.modifiersList,
 	    	    eventObject.repeat, eventObject.localeArg);
