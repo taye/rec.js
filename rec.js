@@ -37,7 +37,8 @@ window.rec = (function () {
 			focus: 'Events',
 			focusin: 'Events',
 			focusout: 'Events',
-			select: 'Events'
+			select: 'Events',
+            scroll: 'Events'
 		},
 		logEvent = {		
 			Events: function (e) {
@@ -93,6 +94,17 @@ window.rec = (function () {
                 dispatch: function (e) {
                     cursor.classList.remove('down');
                 }
+            },
+            scroll: {
+                capture: function (e) {
+                    e.scroll = {
+                        x: window.scrollX,
+                        y: window.scrollY
+                    };
+                },
+                dispatch: function (e) {
+                    window.scroll(e.scroll.x, e.scroll.y);
+                }
             }
 		},
 		excludedProps = [
@@ -139,7 +151,7 @@ window.rec = (function () {
 		 * There is also a problem with mouseEvents whent they were
 		 * captured while the window was scrolled
 		 */
-		scrollToTop = true,
+		scrollToTop = false,
 		recPanel = document.body.appendChild(document.createElement('div')),
 		cover = document.body.appendChild(document.createElement('div')),
 		cursor = document.body.appendChild(document.createElement('div')),
@@ -291,7 +303,9 @@ window.rec = (function () {
 			playing = true;
 			cover.classList.add('show');
 			cursor.classList.add('show');
-			window.scrollTo(0, 0);
+			if (scrollToTop) {
+                window.scrollTo(0, 0);
+            }
 
 			interval = window.setTimeout(dispatchEvent,
 				events[currentIndex].recTime * playbackSpeed);
