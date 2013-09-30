@@ -6,7 +6,7 @@ Javascript Event Recording and playback module.
 Bookmark Link
 -------------
 ```javascript
-javascript:(function(){ s = document.createElement('script'); s.src = 'https://raw.github.com/TAdeyemi/rec.js/master/rec.js'; document.body.appendChild(s); }())
+javascript:(function(){ s = document.createElement('script'); s.src = 'http://taye.me/rec.js/rec.js'; document.body.appendChild(s); }())
 ```
 
 
